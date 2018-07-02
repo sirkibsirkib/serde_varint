@@ -1,12 +1,10 @@
 use std::{
-	self,
 	fmt,
 	io,
 	marker,
 };
 
 use serde::{
-	self,
 	Serializer,
 	Deserializer,
 	ser::{
@@ -55,8 +53,6 @@ struct VarIntVisitor<T> where T: VarInt {
 	phantom: marker::PhantomData<T>,
 }
 
-static ALWAYS: &'static u8 = &5;
-
 impl<'de,T> Visitor<'de> for VarIntVisitor<T>
 where T: VarInt
 {
@@ -69,19 +65,19 @@ where T: VarInt
     fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where A: SeqAccess<'de>,
     {
-    	Ok(Readymagoo{
+    	Ok(SeqReader {
     		src: &mut seq,
-    		phantom: &ALWAYS,
+    		phantom: marker::PhantomData::default(),
     	}.read_varint::<T>().unwrap())
     }
 }
 
-struct Readymagoo<'a, A> where A: SeqAccess<'a> {
+struct SeqReader<'a, A> where A: SeqAccess<'a> {
 	src: A,
-	phantom: &'a u8,
+	phantom: marker::PhantomData<&'a ()>,
 }
 
-impl<'a, A> io::Read for Readymagoo<'a, A> where A: SeqAccess<'a> {
+impl<'a, A> io::Read for SeqReader<'a, A> where A: SeqAccess<'a> {
 	fn read(&mut self, buf:&mut[u8]) -> Result<usize, io::Error> {
 		if let Ok(Some(x)) = self.src.next_element::<u8>() {
 			buf[0] = x;
