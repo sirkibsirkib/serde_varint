@@ -1,19 +1,23 @@
-use std;
-use std::thread;
 
-use std::net::{
-	TcpStream,
-	TcpListener,
+use std::{
+	thread,
+	net::{
+		TcpStream,
+		TcpListener,
+	},
 };
 
+///////////////////// LIB IMPORT ///////////////////////
 
 use super::*;
+
+/////////////////////// TESTS //////////////////
 
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 struct Data {
 	#[serde(with = "super")]
-	x: u32,
+	x: u64,
 	#[serde(with = "super")]
 	y: i16,
 }
@@ -28,6 +32,8 @@ fn main() {
 		bincode::deserialize_from::<_, Data>(&mut b).unwrap(),
 	);
 }
+
+//////////////////// AUX ////////////////////
 
 fn tcp_pipe() -> [TcpStream; 2] {
 	for port in 200..=std::u16::MAX {
