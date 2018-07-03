@@ -33,9 +33,7 @@ impl convert::Into<NoVarInt> for AllVarInt {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone, Copy)]
 struct NoVarInt {
-	// #[serde(with = "super")]
 	x: u64,
-	// normal bincode serde
 	y: i16,
 }
 
@@ -112,8 +110,34 @@ fn benchmark() {
 	}
 	let took_1 = time_1.elapsed();
 	let prop = dur_proportion(took_0, took_1);
+	println!("PORP {:?}", prop);
 	assert!(prop > 1.0);
 	assert!(prop < 8.0);
+}
+
+#[test]
+fn small_number_benchmark() {
+	let mut sink = io::sink();
+	let num_runs = 200_000;
+
+	let t = AllVarInt {x:21, y:7};
+	let time_0 = time::Instant::now();
+	for _ in 0..num_runs {
+		bincode::serialize_into(&mut sink, &t).unwrap();
+	}
+	let took_0 = time_0.elapsed();
+
+	let t: NoVarInt = t.into();
+	let time_1 = time::Instant::now();
+	for _ in 0..num_runs {
+		bincode::serialize_into(&mut sink, &t).unwrap();
+	}
+	let took_1 = time_1.elapsed();
+	let prop = dur_proportion(took_0, took_1);
+	println!("SMALL PORP {:?}", prop);
+	assert!(prop > 1.0);
+	assert!(prop < 8.0);
+
 }
 
 #[test]
@@ -125,6 +149,14 @@ fn json() {
 
 }
 
+#[test]
+fn incomplete() {
+	let a = AllVarInt {x: 212363, y: -232 };
+	let mut bytes = bincode::serialize(&a).unwrap();
+	bytes.pop();
+	let res = bincode::deserialize_from::<_,AllVarInt>(&bytes[..]);
+	println!("{:?}", res);
+}
 
 //////////////////// AUX ////////////////////
 
