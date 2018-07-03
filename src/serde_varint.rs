@@ -8,7 +8,7 @@ use serde::{
 	Serializer,
 	Deserializer,
 	ser::{
-		SerializeStruct,
+		SerializeTuple,
 	},
 	de::{
 		Visitor,
@@ -21,7 +21,6 @@ use integer_encoding::{
 	VarIntReader,
 	VarIntWriter,
 };
-// use std::convert::From;
 
 pub fn serialize<T,S>(t:&T, serializer:S) -> Result<S::Ok, S::Error>
 where
@@ -31,9 +30,9 @@ where
 	let space: usize = t.required_space();
     let mut buf = [0u8; 8];
     (&mut buf[..]).write_varint(*t).unwrap();
-    let mut seq = serializer.serialize_struct("", space)?;
+    let mut seq = serializer.serialize_tuple(space)?;
     for byte in buf[..space].iter() {
-    	seq.serialize_field("", byte)?;
+    	seq.serialize_element(byte)?;
     }
     seq.end()
 }

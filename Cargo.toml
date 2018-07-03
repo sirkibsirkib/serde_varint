@@ -7,5 +7,9 @@ authors = ["sirkibsirkib <christopher.esterhuyse@gmail.com>"]
 integer-encoding = "1.0.5"
 itertools = "0.7.8"
 serde = "1.0.69"
-serde_derive = "1.0.69"
+
+
+[dev-dependencies]
+serde_derive = "1.0"
 bincode = "1.0.1"
+serde_json = "1.0"
