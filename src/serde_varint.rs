@@ -116,11 +116,17 @@ where T: VarInt
     		src: &mut seq,
     		phantom: Phant::default(),
     	};
-    	// match t.read_varint::<T>() {
-    	// 	Ok(o) => Ok(o),
-    	// 	Err(e) => Err(e.into()),
-    	// }
-    	Ok(t.read_varint::<T>().unwrap())
+    	match t.read_varint::<T>() {
+    		Ok(o) => Ok(o),
+    		Err(_) => Err(
+    			// since we cannot know the error type of `A`,
+    			// we rely on the fact that apparently it failed to read a u8.
+    			// we can thus recreate the error msg by trying again.
+    			// a bit hacky :|
+    			t.into_inner().next_element::<u8>()
+    			.unwrap_err()
+    		),
+    	}
     }
 }
 
@@ -130,7 +136,12 @@ struct NewtypeReader<'a, A> where A: SeqAccess<'a> {
 	src: A,
 	phantom: Phant<&'a ()>,
 }
-
+impl<'a, A> NewtypeReader<'a, A> where A: SeqAccess<'a> {
+	#[inline(always)]
+	fn into_inner(self) -> A {
+		self.src
+	}
+} 
 impl<'a, A> io::Read for NewtypeReader<'a, A> where A: SeqAccess<'a> {
 	fn read(&mut self, buf:&mut[u8]) -> Result<usize, io::Error> {
 		if let Ok(Some(x)) = self.src.next_element::<u8>() {

@@ -10,6 +10,16 @@ use std::{
 	},
 };
 
+macro_rules! bench {
+	($reps:expr, $work:expr) => {{
+		let start = time::Instant::now();
+		for _ in 0..$reps {
+			($work)();
+		}
+		start.elapsed()
+	}}
+}
+
 ///////////////////// LIB IMPORT ///////////////////////
 
 use super::*;
@@ -116,28 +126,77 @@ fn benchmark() {
 }
 
 #[test]
-fn small_number_benchmark() {
-	let mut sink = io::sink();
-	let num_runs = 200_000;
+fn bench_ser_large() {
+	let mut buf = [0u8; 64];
+	let num_runs = 1_000_000;
+	let varint = AllVarInt {x:9999999927364762743, y:-17722};
+	let fixint: NoVarInt = varint.into();
 
-	let t = AllVarInt {x:21, y:7};
-	let time_0 = time::Instant::now();
-	for _ in 0..num_runs {
-		bincode::serialize_into(&mut sink, &t).unwrap();
-	}
-	let took_0 = time_0.elapsed();
+	let (t_varint, t_fixint) = (
+		bench!(num_runs, || {
+			bincode::serialize_into(&mut buf[..], &varint).unwrap();
+		}),
+		bench!(num_runs, || {
+			bincode::serialize_into(&mut buf[..], &fixint).unwrap();
+		}),
+	);
+	println!("ser large {:?} {:?} {}", t_varint, t_fixint, dur_proportion(t_varint, t_fixint));
+}
 
-	let t: NoVarInt = t.into();
-	let time_1 = time::Instant::now();
-	for _ in 0..num_runs {
-		bincode::serialize_into(&mut sink, &t).unwrap();
-	}
-	let took_1 = time_1.elapsed();
-	let prop = dur_proportion(took_0, took_1);
-	println!("SMALL PORP {:?}", prop);
-	assert!(prop > 1.0);
-	assert!(prop < 8.0);
+#[test]
+fn bench_ser_small() {
+	let mut buf = [0u8; 64];
+	let num_runs = 1_000_000;
+	let varint = AllVarInt {x:21, y:7};
+	let fixint: NoVarInt = varint.into();
 
+	let (t_varint, t_fixint) = (
+		bench!(num_runs, || {
+			bincode::serialize_into(&mut buf[..], &varint).unwrap();
+		}),
+		bench!(num_runs, || {
+			bincode::serialize_into(&mut buf[..], &fixint).unwrap();
+		}),
+	);
+	println!("ser small {:?} {:?} {}", t_varint, t_fixint, dur_proportion(t_varint, t_fixint));
+}
+
+#[test]
+fn bench_de_small() {
+	let num_runs = 1_000_000;
+	let varint = AllVarInt {x:21, y:7};
+	let fixint: NoVarInt = varint.into();
+	let a = bincode::serialize(&varint).unwrap();
+	let b = bincode::serialize(&fixint).unwrap();
+
+	let (t_varint, t_fixint) = (
+		bench!(num_runs, || {
+			bincode::deserialize_from::<_, AllVarInt>(&a[..]).unwrap()
+		}),
+		bench!(num_runs, || {
+			bincode::deserialize_from::<_, NoVarInt>(&b[..]).unwrap()
+		}),
+	);
+	println!("de small{:?} {:?} {}", t_varint, t_fixint, dur_proportion(t_varint, t_fixint));
+}
+
+#[test]
+fn bench_de_large() {
+	let num_runs = 1_000_000;
+	let varint = AllVarInt {x:9999999927364762743, y:-17722};
+	let fixint: NoVarInt = varint.into();
+	let a = bincode::serialize(&varint).unwrap();
+	let b = bincode::serialize(&fixint).unwrap();
+
+	let (t_varint, t_fixint) = (
+		bench!(num_runs, || {
+			bincode::deserialize_from::<_, AllVarInt>(&a[..]).unwrap()
+		}),
+		bench!(num_runs, || {
+			bincode::deserialize_from::<_, NoVarInt>(&b[..]).unwrap()
+		}),
+	);
+	println!("de large {:?} {:?} {}", t_varint, t_fixint, dur_proportion(t_varint, t_fixint));
 }
 
 #[test]
@@ -155,10 +214,20 @@ fn incomplete() {
 	let mut bytes = bincode::serialize(&a).unwrap();
 	bytes.pop();
 	let res = bincode::deserialize_from::<_,AllVarInt>(&bytes[..]);
-	println!("{:?}", res);
+	res.unwrap_err();
 }
 
 //////////////////// AUX ////////////////////
+
+
+
+// fn bench(reps: usize, work: FnMut()) -> time::Duration {
+// 	let start = time::Instant::now();
+// 	for _ in 0..reps {
+// 		work();
+// 	}
+// 	start.elapsed()
+// }
 
 fn dur_conv(a: time::Duration) -> u64 {
 	a.as_secs() as u64 * (1000*1000*1000) + a.subsec_nanos() as u64 
