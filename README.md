@@ -1,5 +1,10 @@
 # VarInt for Serde
 
+This crate offers functions that change the way integers are encoded for your
+`serde` serializer to that of [variable-integer](https://developers.google.com/protocol-buffers/docs/encoding)
+encoding, which is usually more _compact_. You can choose which fields do and do
+not use these overriding functions.
+
 ```rust
 // imports go here
 
@@ -16,11 +21,17 @@ Using `bincode` as an example, `YourStruct { x:5, y:5 }` is serialized as:
 * y --> `[05,00,00,00,00,00,00,00]`
 
 --------------------------
-This create provides `serde` (de)serialization functions for integer types (u8, i8, u16, ...).
-Either manually, or using a `serde` _attribute tag_, you can conventiently override
-the functions used by your (de)serializer for specified integer fields (as in the example above). The
-[var-int encoding](https://developers.google.com/protocol-buffers/docs/encoding)
-is provided by crate `integer-encoding`.
+The crate exposes two functions: `serialize` and `deserialize` which are generic
+over integer types {u8, i8, u16, i16, ...}.
+
+If you're using `serde`'s _derive_ macros to serialize your types (I know I often do),
+its very conventient to inject the var-int functions just using a serde _attribute tag_
+for the desired fields (as in the example above).
+
+Otherwise, the functions can be called manually.
+
+This crate just adapts the low-level, actual encoding provided by crate `integer-encoding`
+for use with the serde data model.
 
 
 ## Trade-off
