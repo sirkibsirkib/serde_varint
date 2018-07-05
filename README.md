@@ -1,53 +1,33 @@
 # VarInt for Serde
 
-
-`integer-encoding` offers an implementation of variable-length integer encoding,
-as described [here](https://developers.google.com/protocol-buffers/docs/encoding).
-
-`serde` is a fantastic, ubiquitious system for (ser)ializing and (de)serializing
-structured data.
-
-By using a _serde attribute tag_, you can cause arbitrary integers within your
-structs to be var-int-encoded, while leaving the other fields untouched.
-This is particularly useful in combination with `bincode`, which will result in
-super-minimal bytes for small numbers.
-
-Example:
 ```rust
-
-extern crate serde;
-#[macro_use]
-extern crate serde_derive;
-extern crate serde_varint;
+// imports go here
 
 #[derive(Serialize, Deserialize)]
-struct MyStuff {
+struct YourStruct {
     #[serde(with = "serde_varint")]
     x: u64,
-    #[serde(with = "serde_varint")]
-    y: i32,
-    #[serde(with = "serde_varint")]
-    z: u16,
 
-    a: f32,
-    b: u64,
-    c: Box<MyStuff>,
+    y: u64,
 }
 ```
-When serialized, fields `x,y,z` of `MyStuff` will be each encoded as a tuple
-of bytes encoded as variable integers, rather than as a u64, i32 and u8 respectively.
-`a,b,c` are left alone and serialized however they usually are (even `b` which is var-int encodable)
+Using `bincode` as an example, `YourStruct { x:5, y:5 }` is serialized as:
+* x --> `[05]`
+* y --> `[05,00,00,00,00,00,00,00]`
 
-When used in combination with bincode, assuming the numbers are small enough,
-the serialized version of this struct will require just 3 bytes for
-fields `a,b,c`, where ordinarily it would require 8+4+2 = 14. 
+--------------------------
+This create provides `serde` (de)serialization functions for integer types (u8, i8, u16, ...).
+Either manually, or using a `serde` _attribute tag_, you can conventiently override
+the functions used by your (de)serializer for specified integer fields (as in the example above). The
+[var-int encoding](https://developers.google.com/protocol-buffers/docs/encoding)
+is provided by crate `integer-encoding`.
+
 
 ## Trade-off
-Serializing a number using var-int encoding is usually slower than just slapping
-the bytes into the writer. For bincode, it seems to be around 2x to 5x slower, 
-depending on the length when var-int-encoded.
-
-Since serializing and deserializing these numbers is reasonably fast, this
+Serializing a number using var-int encoding is slower than just slapping
+the bytes into the writer. For bincode, it seems to be around 1x slower extra
+for each byte in the variable-encoded form. Since serializing and deserializing
+these numbers is reasonably fast, this
 shouldn't usually be your bottleneck anyway. Just bear it in mind when deciding
 whether or not to use this option.
 
